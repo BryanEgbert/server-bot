@@ -50,43 +50,44 @@ class ServerBot(commands.Bot):
     async def check_minecraft_player_count(self):
         self.counter += 1
 
-        container = self.docker_container.get("minecraft-java")
-        if container.status == "exited" or container.status == "paused":
+        mc_container = self.docker_container.get("minecraft-java")
+
+        if mc_container.status == "exited" or mc_container.status == "paused":
             await client.change_presence(
                 status = discord.Status.online,
                 activity=discord.Activity(type=discord.ActivityType.watching, name="Minecraft Server | Offline")
             )
             
             return
-        else:
-            mc_server.set_mc_server(JavaServer.lookup(MINECRAFT_SERVER_ADDRESS))
 
-            mc_server_player_count = mc_server.get_mc_server().status().players.online
+        mc_server.set_mc_server(JavaServer.lookup(MINECRAFT_SERVER_ADDRESS))
 
-            await client.change_presence(
-                status = discord.Status.online, 
-                activity=discord.Activity(type=discord.ActivityType.watching, name=f"Minecraft Server | Online | {mc_server_player_count} / {mc_server.get_mc_server().status().players.max}")
-            )
+        mc_server_player_count = mc_server.get_mc_server().status().players.online
 
-            channel = self.get_channel(int(NOTIFICATION_CHANNEL_ID))
-            if self.counter > 30 and mc_server_player_count <= 0:
-                try:
+        await client.change_presence(
+            status = discord.Status.online, 
+            activity=discord.Activity(type=discord.ActivityType.watching, name=f"Minecraft Server | Online | {mc_server_player_count} / {mc_server.get_mc_server().status().players.max}")
+        )
 
-                    mc_container = self.docker_container.get("minecraft-java")
-                    container = mc_container.stop()
+        channel = self.get_channel(int(NOTIFICATION_CHANNEL_ID))
+        if self.counter > 30 and mc_server_player_count <= 0:
+            try:
 
-                    mc_server.set_mc_server(None)
+                mc_container = self.docker_container.get("minecraft-java")
+                container = mc_container.stop()
 
-                    embed = discord.Embed(title="Server Update", color=discord.Color.red(), description="Minecraft server is now offline")
-                    await channel.send(embeds=[embed])
-                except docker.errors.APIError as e:
-                    embed = discord.Embed(title="Error", color=discord.Color.red(), description="Error in stopping the minecraft server")
-                    embed.add_field(name="Stacktrace", value=e)
+                mc_server.set_mc_server(None)
 
-                    await channel.send(embeds=[embed])
+                embed = discord.Embed(title="Server Update", color=discord.Color.red(), description="Minecraft server is now offline")
+                await channel.send(embeds=[embed])
+            except docker.errors.APIError as e:
+                embed = discord.Embed(title="Error", color=discord.Color.red(), description="Error in stopping the minecraft server")
+                embed.add_field(name="Stacktrace", value=e)
 
-                self.counter = 0
-            
+                await channel.send(embeds=[embed])
+
+            self.counter = 0
+        
     @check_minecraft_player_count.before_loop
     async def before_my_task(self):
         await self.wait_until_ready()
