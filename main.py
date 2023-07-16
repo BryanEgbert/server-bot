@@ -22,19 +22,15 @@ DOCKER_CLIENT = docker.from_env()
 NOTIFICATION_CHANNEL_ID = os.environ.get("NOTIFICATION_CHANNEL_ID")
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 MINECRAFT_SERVER_ADDRESS = os.environ.get("MINECRAFT_SERVER_ADDRESS")
-DISCORD_GUILD_ID = os.environ.get("DISCORD_GUILD_ID")
 BOT_CLIENT_ID = os.environ.get("BOT_CLIENT_ID")
 
 class ServerBot(commands.Bot):
-    def __init__(self, command_prefix: str, intents: discord.Intents, docker_client: docker.DockerClient):
+    def __init__(self, command_prefix: str, intents: discord.Intents, docker_client: docker.DockerClient, rpc: Presence):
         super().__init__(command_prefix=command_prefix, intents=intents)
         self.docker_container = docker_client.containers
-        self.tree = app_commands.CommandTree(self)
+        self.rpc = rpc
 
     async def on_ready(self) -> None:
-        if DISCORD_GUILD_ID != None:
-            await self.tree.sync(guild=discord.Object(id=int(DISCORD_GUILD_ID)))
-
         try:
             container = self.docker_container.get("minecraft-java")
             if container.status == "exited" or container.status == "paused":
@@ -46,20 +42,24 @@ class ServerBot(commands.Bot):
         except docker.errors.APIError as e:
             print(f"Something is wrong: {e}")
 
-        rpc = Presence(BOT_CLIENT_ID)
+        self.rpc.connect()
 
-        await client.change_presence(status = discord.Status.Online, activity=discord.ActivityType.watching, name="Minecraft server")
+        # await client.change_presence(status = discord.Status.online, activity=discord.Activity(type=discord.ActivityType.watching, name="Minecraft Server"))
         print(f'Server started sucessfully.')
     
     async def setup_hook(self) -> None:
         self.check_minecraft_player_count.start()
+        self.rpc.update()
 
     @tasks.loop(minutes=5)
     async def check_minecraft_player_count(self):
         if mc_server.get_mc_server() == None:
+            self.rpc.update(details="Hosting Minecraft Server", state="Server status: Offline")
             return
 
-        if mc_server.get_mc_server().status().players.online > 0:
+        mc_server_player_count = mc_server.get_mc_server().status().players.online
+        if mc_server_player_count > 0:
+            self.rpc.update(details="Hosting Minecraft Server", state=f"Server status: Online\nPlayer count: {mc_server_player_count}")
             return
 
         channel = self.get_channel(int(NOTIFICATION_CHANNEL_ID))
@@ -88,7 +88,6 @@ intents.message_content = True
 client = ServerBot("$", intents, docker_client=DOCKER_CLIENT)
 
 @client.command()
-@client.tree.command()
 async def start_mc(ctx: commands.Context):
     try:
         mc_container = DOCKER_CLIENT.containers.get("minecraft-java")
@@ -105,7 +104,6 @@ async def start_mc(ctx: commands.Context):
         await ctx.send(embeds=[embed])
                   
 @client.command()
-@client.tree.command()
 async def mc_status(ctx: commands.Context):
     if mc_server.get_mc_server() != None:
         embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=f"Minecraft server is currently **online**")
@@ -115,7 +113,7 @@ async def mc_status(ctx: commands.Context):
         await ctx.send(embeds=[embed])     
 
 if __name__ == "__main__":
-    if DISCORD_TOKEN == None or NOTIFICATION_CHANNEL_ID == None or MINECRAFT_SERVER_ADDRESS == None:
+    if DISCORD_TOKEN == None or NOTIFICATION_CHANNEL_ID == None or MINECRAFT_SERVER_ADDRESS == None or BOT_CLIENT_ID == None:
         os.abort()
 
     client.run(DISCORD_TOKEN)
