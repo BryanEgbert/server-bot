@@ -1,7 +1,7 @@
 import discord
 import subprocess
 from discord.ext import commands, tasks
-from mcstatus import JavaServer
+from mcclient import QueryClient
 import os
 import docker
 
@@ -16,13 +16,14 @@ class ServerBot(commands.Bot):
     async def on_ready(self) -> None:
         try:
             container = self.docker_container.get("minecraft-java")
-            mc_server = JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS"))
+            mc_server = QueryClient(os.environ.get("MINECRAFT_SERVER_ADDRESS"))
         except docker.errors.NotFound:
             mc_server = None
         except docker.errors.APIError:
             print("Something is wrong")
 
         print(f'Server started sucessfully.')
+        print(mc_server.get_status().players.online)
     
     async def setup_hook(self) -> None:
         self.check_minecraft_player_count.start()
@@ -33,17 +34,18 @@ class ServerBot(commands.Bot):
         if mc_server == None:
             return
 
-        if mc_server.players.online > 0:
+        status = query_client.get_status()
+        if status.players.online > 0:
             return
 
         # process = subprocess.run(f"echo {password} | sudo -S docker stop minecraft-java", text=True, shell=True, stderr=True)
         try:
             mc_container = self.docker_container.get("minecraft-java")
-            container = mc_container.stop()
+            mc_container.stop()
 
             mc_server = None
 
-            await ctx.send(f"Minecraft server stopped: {container.id}")
+            await ctx.send(f"Minecraft server stopped: {mc_container.id}")
         except docker.errors.APIError:
             await ctx.send(f"Something's wrong when stopping the minecraft server")
         
@@ -62,11 +64,11 @@ client = ServerBot("$", intents, docker_client=docker_client)
 async def start_mc(ctx: commands.Context):
     try:
         mc_container = docker_client.containers.get("minecraft-java")
-        container = mc_container.start()
+        mc_container.start()
 
         mc_server = JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS"))
 
-        await ctx.send(f"Minecraft server started successfully: {container.id}")
+        await ctx.send(f"Minecraft server started successfully: {mc_container.id}")
     except docker.errors.APIError:
         await ctx.send("error when starting the minecraft server")
 
