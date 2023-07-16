@@ -55,16 +55,19 @@ class ServerBot(commands.Bot):
                 status = discord.Status.online,
                 activity=discord.Activity(type=discord.ActivityType.watching, name="Minecraft Server | Offline")
             )
-            
-            return
 
-        mc_server_player_count = mc_server.get_mc_server().status().players.online
-        if mc_server_player_count > 0:
+            return
+        else:
+            mc_server_player_count = mc_server.get_mc_server().status().players.online
             await client.change_presence(
                 status = discord.Status.online, 
                 activity=discord.Activity(type=discord.ActivityType.watching, name=f"Minecraft Server | Online | {mc_server_player_count} / {mc_server.get_mc_server().status().players.max}")
             )
 
+            return
+
+        
+        if mc_server_player_count > 0:
             return
 
         channel = self.get_channel(int(NOTIFICATION_CHANNEL_ID))
