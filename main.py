@@ -23,7 +23,6 @@ DOCKER_CLIENT = docker.from_env()
 NOTIFICATION_CHANNEL_ID = os.environ.get("NOTIFICATION_CHANNEL_ID")
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 MINECRAFT_SERVER_ADDRESS = os.environ.get("MINECRAFT_SERVER_ADDRESS")
-BOT_CLIENT_ID = os.environ.get("BOT_CLIENT_ID")
 
 class ServerBot(commands.Bot):
     def __init__(self, command_prefix: str, intents: discord.Intents, docker_client: docker.DockerClient):
@@ -122,7 +121,7 @@ async def mc_status(ctx: commands.Context):
         await ctx.send(embeds=[embed])     
 
 if __name__ == "__main__":
-    if DISCORD_TOKEN == None or NOTIFICATION_CHANNEL_ID == None or MINECRAFT_SERVER_ADDRESS == None or BOT_CLIENT_ID == None:
+    if DISCORD_TOKEN == None or NOTIFICATION_CHANNEL_ID == None or MINECRAFT_SERVER_ADDRESS == None:
         os.abort()
 
     client.run(DISCORD_TOKEN)
