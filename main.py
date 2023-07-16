@@ -52,9 +52,8 @@ class ServerBot(commands.Bot):
         if mc_server.get_mc_server().status().players.online > 0:
             return
 
-        # process = subprocess.run(f"echo {password} | sudo -S docker stop minecraft-java", text=True, shell=True, stderr=True)
         try:
-            channel = self.get_channel(os.environ.get())
+            channel = self.get_channel(int(NOTIFICATION_CHANNEL_ID))
 
             mc_container = self.docker_container.get("minecraft-java")
             container = mc_container.stop()
