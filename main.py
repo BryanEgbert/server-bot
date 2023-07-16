@@ -13,7 +13,7 @@ class MCServer():
     def set_mc_server(self, val) -> None:
         self.mc_server = val
 
-    def get_mc_server() -> JavaServer:
+    def get_mc_server(self):
         return self.mc_server
 
 mc_server = MCServer()
