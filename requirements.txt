@@ -13,7 +13,7 @@ frozenlist==1.4.0
 h11==0.14.0
 httpcore==0.17.3
 idna==3.4
-mcclient-lib==1.1.0
+mcstatus==11.0.0
 multidict==6.0.4
 packaging==23.1
 requests==2.31.0
