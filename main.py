@@ -7,13 +7,14 @@ import docker
 
 
 class MCServer():
-    self.mc_server = None
+    def __init__(self):
+        self.mc_server = None
 
     def set_mc_server(self, val) -> None:
-        mc_server = val
+        self.mc_server = val
 
     def get_mc_server() -> JavaServer:
-        return mc_server
+        return self.mc_server
 
 mc_server = MCServer()
 docker_client = docker.from_env()
