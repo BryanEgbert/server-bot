@@ -51,13 +51,8 @@ class ServerBot(commands.Bot):
     async def check_minecraft_player_count(self):
         if mc_server.get_mc_server() == None:
             await client.change_presence(
-                status = discord.Status.online, 
-                activity=discord.Activity(
-                    type=discord.ActivityType.watching, 
-                    name="Minecraft Server", 
-                    state="Hosting minecraft server", 
-                    details="Server status: offline"
-                )
+                status = discord.Status.online,
+                activity=discord.Activity(type=discord.ActivityType.watching, name="Minecraft Server | Offline")
             )
             return
 
@@ -65,15 +60,9 @@ class ServerBot(commands.Bot):
         if mc_server_player_count > 0:
             await client.change_presence(
                 status = discord.Status.online, 
-                activity=discord.Activity(
-                    type=discord.ActivityType.watching, 
-                    name="Minecraft Server", 
-                    state="Hosting minecraft server", 
-                    details=f"Server status: online", 
-                    party={"size": [mc_server_player_count, mc_server.get_mc_server().status().players.max]}, 
-                    start=datetime.now().timestamp()
-                )
+                activity=discord.Activity(type=discord.ActivityType.watching, name=f"Minecraft Server | Online | {mc_server_player_count} / {mc_server.get_mc_server().status().players.max}")
             )
+
             return
 
         channel = self.get_channel(int(NOTIFICATION_CHANNEL_ID))
@@ -113,6 +102,11 @@ async def start_mc(ctx: commands.Context):
         embed.add_field(name="Container ID", value=mc_container.id)
 
         await ctx.send(embeds=[embed])
+
+        await client.change_presence(
+            status = discord.Status.online, 
+            activity=discord.Activity(type=discord.ActivityType.watching, name=f"Minecraft Server | Online | {mc_server_player_count} / {mc_server.get_mc_server().status().players.max}")
+        )
     except docker.errors.APIError as e:
         embed = discord.Embed(title="Error", color=discord.Color.red(), description=e)
         await ctx.send(embeds=[embed])
