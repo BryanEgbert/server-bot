@@ -38,7 +38,9 @@ class ServerBot(commands.Bot):
 
         # process = subprocess.run(f"echo {password} | sudo -S docker stop minecraft-java", text=True, shell=True, stderr=True)
         try:
-            container = self.docker_container.stop(name="minecraft-java")
+            mc_container = self.docker_container.get("minecraft-java")
+            container = mc_container.stop(name="minecraft-java")
+
             mc_server = None
 
             await ctx.send(f"Minecraft server stopped: {container.id}")
@@ -59,8 +61,9 @@ client = ServerBot("$", intents, docker_client=docker_client)
 @client.command()
 async def start_mc(ctx: commands.Context):
     try:
-        docker_container = docker_client.containers
-        container = docker_container.start(name="minecraft-java")
+        mc_container = docker_client.containers.get("minecraft-java")
+        container = mc_container.start(name="minecraft-java")
+
         mc_server = JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS"))
 
         await ctx.send(f"Minecraft server started successfully: {container.id}")
