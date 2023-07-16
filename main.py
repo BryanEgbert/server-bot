@@ -59,7 +59,8 @@ client = ServerBot("$", intents, docker_client=docker_client)
 @client.command()
 async def start_mc(ctx: commands.Context):
     try:
-        container = docker_client.containers.start(name="minecraft-java")
+        docker_container = docker_client.containers
+        container = docker_container.start(name="minecraft-java")
         mc_server = JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS"))
 
         await ctx.send(f"Minecraft server started successfully: {container.id}")
