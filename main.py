@@ -5,7 +5,17 @@ from mcstatus import JavaServer
 import os
 import docker
 
-mc_server = None
+
+class MCServer():
+    self.mc_server = None
+
+    def set_mc_server(self, val) -> None:
+        mc_server = val
+
+    def get_mc_server() -> JavaServer:
+        return mc_server
+
+mc_server = MCServer()
 docker_client = docker.from_env()
 
 class ServerBot(commands.Bot):
@@ -16,9 +26,9 @@ class ServerBot(commands.Bot):
     async def on_ready(self) -> None:
         try:
             container = self.docker_container.get("minecraft-java")
-            mc_server = JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS"))
+            mc_server.set_mc_server(JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS")))
         except docker.errors.NotFound:
-            mc_server = None
+            mc_server.set_mc_server(None)
         except docker.errors.APIError:
             print("Something is wrong")
 
@@ -29,11 +39,10 @@ class ServerBot(commands.Bot):
 
     @tasks.loop(minutes=5)
     async def check_minecraft_player_count(self):
-        global mc_server
-        if mc_server == None:
+        if mc_server.get_mc_server() == None:
             return
 
-        if mc_server.players.online > 0:
+        if mc_server.get_mc_server().players.online > 0:
             return
 
         # process = subprocess.run(f"echo {password} | sudo -S docker stop minecraft-java", text=True, shell=True, stderr=True)
@@ -41,9 +50,9 @@ class ServerBot(commands.Bot):
             mc_container = self.docker_container.get("minecraft-java")
             container = mc_container.stop()
 
-            mc_server = None
+            mc_server.set_mc_server(None)
 
-            await ctx.send(f"Minecraft server stopped: {container.id}")
+            await ctx.send(f"Minecraft server stopped: {mc_container.id}")
         except docker.errors.APIError:
             await ctx.send(f"Something's wrong when stopping the minecraft server")
         
@@ -64,9 +73,9 @@ async def start_mc(ctx: commands.Context):
         mc_container = docker_client.containers.get("minecraft-java")
         container = mc_container.start()
 
-        mc_server = JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS"))
+        mc_server.set_mc_server(JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS")))
 
-        await ctx.send(f"Minecraft server started successfully: {container.id}")
+        await ctx.send(f"Minecraft server started successfully: {mc_container.id}")
     except docker.errors.APIError:
         await ctx.send("error when starting the minecraft server")
 
@@ -92,7 +101,7 @@ async def start_mc(ctx: commands.Context):
 
 @client.command()
 async def mc_status(ctx: commands.Context):
-    if mc_server != None:
+    if mc_server.get_mc_server() != None:
         await ctx.send(f"Minecraft server is currently online")     
     else:
         await ctx.send(f"Minecraft server is currently offline")     
