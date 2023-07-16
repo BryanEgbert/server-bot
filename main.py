@@ -30,7 +30,10 @@ class ServerBot(commands.Bot):
     async def on_ready(self) -> None:
         try:
             container = self.docker_container.get("minecraft-java")
-            mc_server.set_mc_server(JavaServer.lookup(MINECRAFT_SERVER_ADDRESS))
+            if container.status == "exited" or container.status == "paused":
+                mc_server.set_mc_server(None)
+            else:
+                mc_server.set_mc_server(JavaServer.lookup(MINECRAFT_SERVER_ADDRESS))
         except docker.errors.NotFound:
             mc_server.set_mc_server(None)
         except docker.errors.APIError as e:
