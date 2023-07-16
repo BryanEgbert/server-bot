@@ -6,6 +6,7 @@ import os
 import docker
 from discord import app_commands
 from pypresence import Presence
+import asyncio
 
 class MCServer():
     def __init__(self):
@@ -42,17 +43,19 @@ class ServerBot(commands.Bot):
         except docker.errors.APIError as e:
             print(f"Something is wrong: {e}")
 
-        self.rpc.connect()
-
         # await client.change_presence(status = discord.Status.online, activity=discord.Activity(type=discord.ActivityType.watching, name="Minecraft Server"))
         print(f'Server started sucessfully.')
     
     async def setup_hook(self) -> None:
         self.check_minecraft_player_count.start()
-        self.rpc.update()
 
     @tasks.loop(minutes=5)
     async def check_minecraft_player_count(self):
+        if self.rpc.loop.is_running():
+            asybcio.run(rpc.connect())
+            
+        self.rpc.connect()
+
         if mc_server.get_mc_server() == None:
             self.rpc.update(details="Hosting Minecraft Server", state="Server status: Offline")
             return
@@ -84,8 +87,9 @@ class ServerBot(commands.Bot):
 
 intents = discord.Intents.default()
 intents.message_content = True
+rpc = Presence(BOT_CLIENT_ID)
 
-client = ServerBot("$", intents, docker_client=DOCKER_CLIENT)
+client = ServerBot("$", intents, docker_client=DOCKER_CLIENT, rpc=rpc)
 
 @client.command()
 async def start_mc(ctx: commands.Context):
