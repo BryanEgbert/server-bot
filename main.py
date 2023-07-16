@@ -1,7 +1,7 @@
 import discord
 import subprocess
 from discord.ext import commands, tasks
-from mcstatus import JavaServer
+from mcclient import QueryClient
 import os
 import docker
 from discord import app_commands
@@ -57,7 +57,7 @@ class ServerBot(commands.Bot):
                 status = discord.Status.online,
                 activity=discord.Activity(type=discord.ActivityType.watching, name="Minecraft Server | Offline")
             )
-
+            
             return
 
         mc_server_player_count = mc_server.get_mc_server().status().players.online
@@ -89,6 +89,7 @@ class ServerBot(commands.Bot):
     @check_minecraft_player_count.before_loop
     async def before_my_task(self):
         await self.wait_until_ready()
+
 
 intents = discord.Intents.default()
 intents.message_content = True
