@@ -17,7 +17,10 @@ class MCServer():
         return self.mc_server
 
 mc_server = MCServer()
-docker_client = docker.from_env()
+DOCKER_CLIENT = docker.from_env()
+NOTIFICATION_CHANNEL_ID = os.environ.get("NOTIFICATION_CHANNEL_ID")
+DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
+MINECRAFT_SERVER_ADDRESS = os.environ.get("MINECRAFT_SERVER_ADDRESS")
 
 class ServerBot(commands.Bot):
     def __init__(self, command_prefix: str, intents: discord.Intents, docker_client: docker.DockerClient):
@@ -27,11 +30,11 @@ class ServerBot(commands.Bot):
     async def on_ready(self) -> None:
         try:
             container = self.docker_container.get("minecraft-java")
-            mc_server.set_mc_server(JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS")))
+            mc_server.set_mc_server(JavaServer.lookup(MINECRAFT_SERVER_ADDRESS))
         except docker.errors.NotFound:
             mc_server.set_mc_server(None)
-        except docker.errors.APIError:
-            print("Something is wrong")
+        except docker.errors.APIError as e:
+            print(f"Something is wrong: {e}")
 
         print(f'Server started sucessfully.')
     
@@ -43,73 +46,58 @@ class ServerBot(commands.Bot):
         if mc_server.get_mc_server() == None:
             return
 
-        if mc_server.get_mc_server().players.online > 0:
+        if mc_server.get_mc_server().status().players.online > 0:
             return
 
         # process = subprocess.run(f"echo {password} | sudo -S docker stop minecraft-java", text=True, shell=True, stderr=True)
         try:
+            channel = self.get_channel(os.environ.get())
+
             mc_container = self.docker_container.get("minecraft-java")
             container = mc_container.stop()
 
             mc_server.set_mc_server(None)
 
-            await ctx.send(f"Minecraft server stopped: {mc_container.id}")
+            await channel.send("Minecraft server is now offline")
         except docker.errors.APIError:
             await ctx.send(f"Something's wrong when stopping the minecraft server")
-        
-        # if process.returncode == 0:
-        #     await ctx.send("Minecraft server stopped")
-        # else:
-        #     await ctx.send(f"Something wrong when stopping the minecraft server, trace log:\n{process.stderr}")
+    
+    @check_minecraft_player_count.before_loop
+    async def before_my_task(self):
+        await self.wait_until_ready()
 
-# client = commands.Bot(command_prefix=command_prefix, intents=intents)
 intents = discord.Intents.default()
 intents.message_content = True
 
-client = ServerBot("$", intents, docker_client=docker_client)
+client = ServerBot("$", intents, docker_client=DOCKER_CLIENT)
 
 @client.command()
 async def start_mc(ctx: commands.Context):
     try:
-        mc_container = docker_client.containers.get("minecraft-java")
+        mc_container = DOCKER_CLIENT.containers.get("minecraft-java")
         container = mc_container.start()
 
         mc_server.set_mc_server(JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS")))
 
-        await ctx.send(f"Minecraft server started successfully: {mc_container.id}")
-    except docker.errors.APIError:
-        await ctx.send("error when starting the minecraft server")
+        embed = discord.Embed(title="Server Update", color=discord.Color.green(), description=f"Minecraft server started successfully")
+        embed.add_field(name="Container ID", value=mc_container.id)
 
-    # password = os.environ.get("PASSWORD")
-
-
-    # if password != None:
-        # process = subprocess.run(f"echo {password} | sudo -S docker start minecraft-java", text=True, shell=True, stderr=True)
-        # if process.returncode == 0:
-        #     if mc_server_started:
-        #         await ctx.send("Minecraft server is already online")
-        #     else: 
-        #         mc_server_started = True
-        #         mc_server = JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS"))
-
-        #         await ctx.send("Minecraft server started successfully.\nI will check the player count of the minecraft server every 5 minutes, server will automatically stop if there are no players in the server")
-        # else:
-        #     await ctx.send(f"Something wrong when starting the minecraft server, trace log:\n{process.stderr}")  
-        
-
-    # await ctx.send("You haven't set the PASSWORD environment variable")
+        await ctx.send(embeds=[embed])
+    except docker.errors.APIError as e:
+        embed = discord.Embed(title="Error", color=discord.Color.red(), description=e)
+        await ctx.send(embeds=[embed])
                   
-
 @client.command()
 async def mc_status(ctx: commands.Context):
     if mc_server.get_mc_server() != None:
-        await ctx.send(f"Minecraft server is currently online")     
+        embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=f"Minecraft server is currently **online**")
+        await ctx.send(embeds=[embed])     
     else:
-        await ctx.send(f"Minecraft server is currently offline")     
+        embed = discord.Embed(title="Server Status", color=discord.Color.red(), description=f"Minecraft server is currently **offline**")
+        await ctx.send(embeds=[embed])     
 
-DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
+if __name__ == "__main__":
+    if DISCORD_TOKEN == None or NOTIFICATION_CHANNEL_ID == None or MINECRAFT_SERVER_ADDRESS == None:
+        os.abort()
 
-if DISCORD_TOKEN == None:
-    os.abort()
-
-client.run(DISCORD_TOKEN)
+    client.run(DISCORD_TOKEN)
