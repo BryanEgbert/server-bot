@@ -29,6 +29,7 @@ class ServerBot(commands.Bot):
 
     @tasks.loop(minutes=5)
     async def check_minecraft_player_count(self):
+        nonlocal mc_server
         if mc_server == None:
             return
 
@@ -39,7 +40,7 @@ class ServerBot(commands.Bot):
         try:
             container = self.docker_client.containers.stop(name="minecraft-java")
             mc_server = None
-            
+
             await ctx.send(f"Minecraft server stopped: {container.id}")
         except docker.errors.APIError:
             await ctx.send(f"Something's wrong when stopping the minecraft server")
