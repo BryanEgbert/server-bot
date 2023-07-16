@@ -50,6 +50,12 @@ class ServerBot(commands.Bot):
     async def check_minecraft_player_count(self):
         self.counter += 1
 
+        container = self.docker_container.get("minecraft-java")
+        if container.status == "exited" or container.status == "paused":
+            mc_server.set_mc_server(None)
+        else:
+            mc_server.set_mc_server(JavaServer.lookup(MINECRAFT_SERVER_ADDRESS))
+
         if mc_server.get_mc_server() == None:
             await client.change_presence(
                 status = discord.Status.online,
