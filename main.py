@@ -71,7 +71,7 @@ class ServerBot(commands.Bot):
             return
 
         channel = self.get_channel(int(NOTIFICATION_CHANNEL_ID))
-        if counter >= 30:
+        if self.counter >= 30:
             try:
 
                 mc_container = self.docker_container.get("minecraft-java")
