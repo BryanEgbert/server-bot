@@ -1,12 +1,11 @@
 import discord
-import subprocess
+from discord import app_commands
 from discord.ext import commands, tasks
-from mcclient import QueryClient
+import subprocess
 import os
 import docker
-from discord import app_commands
+from mcstatus import JavaServer
 from datetime import datetime
-import time
 
 class MCServer():
     def __init__(self):
