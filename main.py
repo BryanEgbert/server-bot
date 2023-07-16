@@ -45,10 +45,12 @@ class ServerBot(commands.Bot):
         print(f'Server started sucessfully.')
     
     async def setup_hook(self) -> None:
+        self.update_bot_activity().start()
         self.check_minecraft_player_count.start()
 
-    @tasks.loop(minutes=5)
-    async def check_minecraft_player_count(self):
+    @tasks.loop(minutes=1)
+    async def update_bot_activity(self):
+        await wait_until_ready()
         if mc_server.get_mc_server() == None:
             await client.change_presence(
                 status = discord.Status.online,
@@ -63,6 +65,15 @@ class ServerBot(commands.Bot):
                 activity=discord.Activity(type=discord.ActivityType.watching, name=f"Minecraft Server | Online | {mc_server_player_count} / {mc_server.get_mc_server().status().players.max}")
             )
 
+            return
+
+    @tasks.loop(minutes=30)
+    async def check_minecraft_player_count(self):
+        if mc_server.get_mc_server() == None:
+            return
+
+        mc_server_player_count = mc_server.get_mc_server().status().players.online
+        if mc_server_player_count > 0:
             return
 
         channel = self.get_channel(int(NOTIFICATION_CHANNEL_ID))
@@ -102,11 +113,6 @@ async def start_mc(ctx: commands.Context):
         embed.add_field(name="Container ID", value=mc_container.id)
 
         await ctx.send(embeds=[embed])
-
-        await client.change_presence(
-            status = discord.Status.online, 
-            activity=discord.Activity(type=discord.ActivityType.watching, name=f"Minecraft Server | Online | {mc_server_player_count} / {mc_server.get_mc_server().status().players.max}")
-        )
     except docker.errors.APIError as e:
         embed = discord.Embed(title="Error", color=discord.Color.red(), description=e)
         await ctx.send(embeds=[embed])
