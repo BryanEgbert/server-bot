@@ -11,11 +11,11 @@ docker_client = docker.from_env()
 class ServerBot(commands.Bot):
     def __init__(self, command_prefix: str, intents: discord.Intents, docker_client: docker.DockerClient):
         super().__init__(command_prefix=command_prefix, intents=intents)
-        self.docker_client = docker_client
+        self.docker_container = docker_client.containers
 
     async def on_ready(self) -> None:
         try:
-            container = self.docker_client.containers.get("minecraft-java")
+            container = self.docker_container.get("minecraft-java")
             mc_server = JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS"))
         except docker.errors.NotFound:
             mc_server = None
@@ -38,7 +38,7 @@ class ServerBot(commands.Bot):
 
         # process = subprocess.run(f"echo {password} | sudo -S docker stop minecraft-java", text=True, shell=True, stderr=True)
         try:
-            container = self.docker_client.containers.stop(name="minecraft-java")
+            container = self.docker_container.stop(name="minecraft-java")
             mc_server = None
 
             await ctx.send(f"Minecraft server stopped: {container.id}")
