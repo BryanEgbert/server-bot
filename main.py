@@ -29,7 +29,7 @@ class ServerBot(commands.Bot):
 
     @tasks.loop(minutes=5)
     async def check_minecraft_player_count(self):
-        nonlocal mc_server
+        global mc_server
         if mc_server == None:
             return
 
