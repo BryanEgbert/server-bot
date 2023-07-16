@@ -51,7 +51,6 @@ class ServerBot(commands.Bot):
     @tasks.loop(minutes=1)
     async def check_minecraft_player_count(self):
         self.counter += 1
-        mc_server_player_count = mc_server.get_mc_server().status().players.online
 
         if mc_server.get_mc_server() == None:
             await client.change_presence(
@@ -60,16 +59,16 @@ class ServerBot(commands.Bot):
             )
 
             return
-        else:
-            await client.change_presence(
-                status = discord.Status.online, 
-                activity=discord.Activity(type=discord.ActivityType.watching, name=f"Minecraft Server | Online | {mc_server_player_count} / {mc_server.get_mc_server().status().players.max}")
-            )
 
-            return
+        mc_server_player_count = mc_server.get_mc_server().status().players.online
+
+        await client.change_presence(
+            status = discord.Status.online, 
+            activity=discord.Activity(type=discord.ActivityType.watching, name=f"Minecraft Server | Online | {mc_server_player_count} / {mc_server.get_mc_server().status().players.max}")
+        )
 
         channel = self.get_channel(int(NOTIFICATION_CHANNEL_ID))
-        if self.counter >= 30 and mc_server_player_count <= 0:
+        if self.counter > 30 and mc_server_player_count <= 0:
             try:
 
                 mc_container = self.docker_container.get("minecraft-java")
