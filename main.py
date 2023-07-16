@@ -5,8 +5,8 @@ from mcstatus import JavaServer
 import os
 import docker
 from discord import app_commands
-from pypresence import Presence
-import asyncio
+from datetime import datetime
+import time
 
 class MCServer():
     def __init__(self):
@@ -26,10 +26,9 @@ MINECRAFT_SERVER_ADDRESS = os.environ.get("MINECRAFT_SERVER_ADDRESS")
 BOT_CLIENT_ID = os.environ.get("BOT_CLIENT_ID")
 
 class ServerBot(commands.Bot):
-    def __init__(self, command_prefix: str, intents: discord.Intents, docker_client: docker.DockerClient, rpc: Presence):
+    def __init__(self, command_prefix: str, intents: discord.Intents, docker_client: docker.DockerClient):
         super().__init__(command_prefix=command_prefix, intents=intents)
         self.docker_container = docker_client.containers
-        self.rpc = rpc
 
     async def on_ready(self) -> None:
         try:
@@ -43,7 +42,6 @@ class ServerBot(commands.Bot):
         except docker.errors.APIError as e:
             print(f"Something is wrong: {e}")
 
-        # await client.change_presence(status = discord.Status.online, activity=discord.Activity(type=discord.ActivityType.watching, name="Minecraft Server"))
         print(f'Server started sucessfully.')
     
     async def setup_hook(self) -> None:
@@ -51,18 +49,31 @@ class ServerBot(commands.Bot):
 
     @tasks.loop(minutes=5)
     async def check_minecraft_player_count(self):
-        if self.rpc.loop.is_running():
-            asybcio.run(rpc.connect())
-            
-        self.rpc.connect()
-
         if mc_server.get_mc_server() == None:
-            self.rpc.update(details="Hosting Minecraft Server", state="Server status: Offline")
+            await client.change_presence(
+                status = discord.Status.online, 
+                activity=discord.Activity(
+                    type=discord.ActivityType.watching, 
+                    name="Minecraft Server", 
+                    state="Hosting minecraft server", 
+                    details="Server status: offline"
+                )
+            )
             return
 
         mc_server_player_count = mc_server.get_mc_server().status().players.online
         if mc_server_player_count > 0:
-            self.rpc.update(details="Hosting Minecraft Server", state=f"Server status: Online\nPlayer count: {mc_server_player_count}")
+            await client.change_presence(
+                status = discord.Status.online, 
+                activity=discord.Activity(
+                    type=discord.ActivityType.watching, 
+                    name="Minecraft Server", 
+                    state="Hosting minecraft server", 
+                    details=f"Server status: online", 
+                    party={"size": [mc_server_player_count, mc_server.get_mc_server().status().players.max]}, 
+                    start=datetime.now().timestamp()
+                )
+            )
             return
 
         channel = self.get_channel(int(NOTIFICATION_CHANNEL_ID))
@@ -87,9 +98,8 @@ class ServerBot(commands.Bot):
 
 intents = discord.Intents.default()
 intents.message_content = True
-rpc = Presence(BOT_CLIENT_ID)
 
-client = ServerBot("$", intents, docker_client=DOCKER_CLIENT, rpc=rpc)
+client = ServerBot("$", intents, docker_client=DOCKER_CLIENT)
 
 @client.command()
 async def start_mc(ctx: commands.Context):
