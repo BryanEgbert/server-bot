@@ -4,7 +4,8 @@ from discord.ext import commands, tasks
 from mcstatus import JavaServer
 import os
 import docker
-
+from discord import app_commands
+from pypresence import Presence
 
 class MCServer():
     def __init__(self):
@@ -21,13 +22,19 @@ DOCKER_CLIENT = docker.from_env()
 NOTIFICATION_CHANNEL_ID = os.environ.get("NOTIFICATION_CHANNEL_ID")
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 MINECRAFT_SERVER_ADDRESS = os.environ.get("MINECRAFT_SERVER_ADDRESS")
+DISCORD_GUILD_ID = os.environ.get("DISCORD_GUILD_ID")
+BOT_CLIENT_ID = os.environ.get("BOT_CLIENT_ID")
 
 class ServerBot(commands.Bot):
     def __init__(self, command_prefix: str, intents: discord.Intents, docker_client: docker.DockerClient):
         super().__init__(command_prefix=command_prefix, intents=intents)
         self.docker_container = docker_client.containers
+        self.tree = app_commands.CommandTree(self)
 
     async def on_ready(self) -> None:
+        if DISCORD_GUILD_ID != None:
+            await self.tree.sync(guild=discord.Object(id=int(DISCORD_GUILD_ID)))
+
         try:
             container = self.docker_container.get("minecraft-java")
             if container.status == "exited" or container.status == "paused":
@@ -39,6 +46,9 @@ class ServerBot(commands.Bot):
         except docker.errors.APIError as e:
             print(f"Something is wrong: {e}")
 
+        rpc = Presence(BOT_CLIENT_ID)
+
+        await client.change_presence(status = discord.Status.Online, activity=discord.ActivityType.watching, name="Minecraft server")
         print(f'Server started sucessfully.')
     
     async def setup_hook(self) -> None:
@@ -52,17 +62,21 @@ class ServerBot(commands.Bot):
         if mc_server.get_mc_server().status().players.online > 0:
             return
 
+        channel = self.get_channel(int(NOTIFICATION_CHANNEL_ID))
         try:
-            channel = self.get_channel(int(NOTIFICATION_CHANNEL_ID))
 
             mc_container = self.docker_container.get("minecraft-java")
             container = mc_container.stop()
 
             mc_server.set_mc_server(None)
 
-            await channel.send("Minecraft server is now offline")
-        except docker.errors.APIError:
-            await ctx.send(f"Something's wrong when stopping the minecraft server")
+            embed = discord.Embed(title="Server Update", color=discord.Color.red(), description="Minecraft server is now offline")
+            await channel.send(embeds=[embed])
+        except docker.errors.APIError as e:
+            embed = discord.Embed(title="Error", color=discord.Color.red(), description="Error in stopping the minecraft server")
+            embed.add_field(name="Stacktrace", value=e)
+
+            await channel.send(embeds=[embed])
     
     @check_minecraft_player_count.before_loop
     async def before_my_task(self):
@@ -74,6 +88,7 @@ intents.message_content = True
 client = ServerBot("$", intents, docker_client=DOCKER_CLIENT)
 
 @client.command()
+@client.tree.command()
 async def start_mc(ctx: commands.Context):
     try:
         mc_container = DOCKER_CLIENT.containers.get("minecraft-java")
@@ -81,7 +96,7 @@ async def start_mc(ctx: commands.Context):
 
         mc_server.set_mc_server(JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS")))
 
-        embed = discord.Embed(title="Server Update", color=discord.Color.green(), description=f"Minecraft server started successfully")
+        embed = discord.Embed(title="Server Update", color=discord.Color.green(), description=f"Minecraft server started successfully. Server will auto close if there is no players online in the server")
         embed.add_field(name="Container ID", value=mc_container.id)
 
         await ctx.send(embeds=[embed])
@@ -90,6 +105,7 @@ async def start_mc(ctx: commands.Context):
         await ctx.send(embeds=[embed])
                   
 @client.command()
+@client.tree.command()
 async def mc_status(ctx: commands.Context):
     if mc_server.get_mc_server() != None:
         embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=f"Minecraft server is currently **online**")
