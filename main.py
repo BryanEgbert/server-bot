@@ -22,6 +22,8 @@ DOCKER_CLIENT = docker.from_env()
 NOTIFICATION_CHANNEL_ID = os.environ.get("NOTIFICATION_CHANNEL_ID")
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 MINECRAFT_SERVER_ADDRESS = os.environ.get("MINECRAFT_SERVER_ADDRESS")
+DISPLAY_IPV4_ADDRESS = os.environ.get("DISPLAY_IPV4_ADDRESS")
+DISPLAY_IPV6_ADDRESS = os.environ.get("DISPLAY_IPV6_ADDRESS")
 
 class ServerBot(commands.Bot):
     def __init__(self, command_prefix: str, intents: discord.Intents, docker_client: docker.DockerClient):
@@ -53,6 +55,8 @@ class ServerBot(commands.Bot):
         mc_container = self.docker_container.get("minecraft-java")
 
         if mc_container.status == "exited" or mc_container.status == "paused":
+            mc_server.set_mc_server(None)
+
             await client.change_presence(
                 status = discord.Status.online,
                 activity=discord.Activity(type=discord.ActivityType.watching, name="Minecraft Server | Offline")
@@ -107,7 +111,9 @@ async def start_mc(ctx: commands.Context):
         mc_server.set_mc_server(JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS")))
 
         embed = discord.Embed(title="Server Update", color=discord.Color.green(), description=f"Minecraft server started successfully. Server will auto close if there is no players online in the server")
-        embed.add_field(name="Container ID", value=mc_container.id)
+        embed.add_field(name="IPv4 Address", value=DISPLAY_IPV4_ADDRESS, inline=True)
+        embed.add_field(name="IPv6 Address", value=DISPLAY_IPV6_ADDRESS, inline=True)
+        embed.add_field(name="Container ID", value=mc_container.id, inline=False)
 
         await ctx.send(embeds=[embed])
     except docker.errors.APIError as e:
@@ -124,7 +130,7 @@ async def mc_status(ctx: commands.Context):
         await ctx.send(embeds=[embed])     
 
 if __name__ == "__main__":
-    if DISCORD_TOKEN == None or NOTIFICATION_CHANNEL_ID == None or MINECRAFT_SERVER_ADDRESS == None:
+    if DISCORD_TOKEN == None or NOTIFICATION_CHANNEL_ID == None or MINECRAFT_SERVER_ADDRESS == None or DISPLAY_IPV4_ADDRESS == None or DISPLAY_IPV6_ADDRESS == None:
         os.abort()
 
     client.run(DISCORD_TOKEN)
