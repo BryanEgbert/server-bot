@@ -18,12 +18,13 @@ class MCServer():
         return self.mc_server
 
 mc_server = MCServer()
+
 DOCKER_CLIENT = docker.from_env()
 NOTIFICATION_CHANNEL_ID = os.environ.get("NOTIFICATION_CHANNEL_ID")
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 MINECRAFT_SERVER_ADDRESS = os.environ.get("MINECRAFT_SERVER_ADDRESS")
-DISPLAY_IPV4_ADDRESS = os.environ.get("DISPLAY_IPV4_ADDRESS")
-DISPLAY_IPV6_ADDRESS = os.environ.get("DISPLAY_IPV6_ADDRESS")
+DISPLAY_IPV4_ADDRESS = os.environ.get("DISPLAY_IPV4_ADDRESS", default="None")
+DISPLAY_IPV6_ADDRESS = os.environ.get("DISPLAY_IPV6_ADDRESS", default="None")
 
 class ServerBot(commands.Bot):
     def __init__(self, command_prefix: str, intents: discord.Intents, docker_client: docker.DockerClient):
@@ -105,14 +106,17 @@ client = ServerBot("$", intents, docker_client=DOCKER_CLIENT)
 @client.command()
 async def start_mc(ctx: commands.Context):
     try:
+        external_ip4 = urllib.request.urlopen('https://api.ipify.org')
+        external_ip6 = urllib.request.urlopen('https://api6.ipify.org')
+        
         mc_container = DOCKER_CLIENT.containers.get("minecraft-java")
         container = mc_container.start()
 
         mc_server.set_mc_server(JavaServer.lookup(os.environ.get("MINECRAFT_SERVER_ADDRESS")))
 
         embed = discord.Embed(title="Server Update", color=discord.Color.green(), description=f"Minecraft server started successfully. Server will auto close if there is no players online in the server")
-        embed.add_field(name="IPv4 Address", value=DISPLAY_IPV4_ADDRESS, inline=True)
-        embed.add_field(name="IPv6 Address", value=DISPLAY_IPV6_ADDRESS, inline=True)
+        embed.add_field(name="IPv4 Address", value=external_ip4.read().decode('utf8') if external_ip4.status == 200 else DISPLAY_IPV4_ADDRESS, inline=True)
+        embed.add_field(name="IPv6 Address", value=external_ip6.read().decode('utf8') if external_ip6.status == 200 else DISPLAY_IPV6_ADDRESS, inline=True)
         embed.add_field(name="Container ID", value=mc_container.id, inline=False)
 
         await ctx.send(embeds=[embed])
@@ -130,7 +134,7 @@ async def mc_status(ctx: commands.Context):
         await ctx.send(embeds=[embed])     
 
 if __name__ == "__main__":
-    if DISCORD_TOKEN == None or NOTIFICATION_CHANNEL_ID == None or MINECRAFT_SERVER_ADDRESS == None or DISPLAY_IPV4_ADDRESS == None or DISPLAY_IPV6_ADDRESS == None:
+    if DISCORD_TOKEN == None or NOTIFICATION_CHANNEL_ID == None or MINECRAFT_SERVER_ADDRESS == None:
         os.abort()
 
     client.run(DISCORD_TOKEN)
