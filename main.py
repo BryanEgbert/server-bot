@@ -129,6 +129,10 @@ async def start_mc(ctx: commands.Context):
 async def mc_status(ctx: commands.Context):
     if mc_server.get_mc_server() != None:
         embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=f"Minecraft server is currently **online**")
+
+        embed.add_field(name="IPv4 Address", value=DISPLAY_IPV4_ADDRESS, inline=True)
+        embed.add_field(name="IPv6 Address", value=DISPLAY_IPV6_ADDRESS, inline=True)
+        
         await ctx.send(embeds=[embed])     
     else:
         embed = discord.Embed(title="Server Status", color=discord.Color.red(), description=f"Minecraft server is currently **offline**")
