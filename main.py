@@ -108,7 +108,7 @@ client = ServerBot("$", intents, docker_client=DOCKER_CLIENT)
 async def start_mc(ctx: commands.Context):
     try:
         external_ip4 = urllib.request.urlopen('https://ip4.ident.me')
-        external_ip6 = urllib.request.urlopen('https://ident.me')
+        external_ip6 = urllib.request.urlopen('https://ip6.ident.me')
         
         mc_container = DOCKER_CLIENT.containers.get("minecraft-java")
         container = mc_container.start()
