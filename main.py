@@ -107,8 +107,8 @@ client = ServerBot("$", intents, docker_client=DOCKER_CLIENT)
 @client.command()
 async def start_mc(ctx: commands.Context):
     try:
-        external_ip4 = urllib.request.urlopen('https://api.ipify.org')
-        external_ip6 = urllib.request.urlopen('https://api6.ipify.org')
+        external_ip4 = urllib.request.urlopen('https://ip4.ident.me')
+        external_ip6 = urllib.request.urlopen('https://ident.me')
         
         mc_container = DOCKER_CLIENT.containers.get("minecraft-java")
         container = mc_container.start()
@@ -123,6 +123,9 @@ async def start_mc(ctx: commands.Context):
         await ctx.send(embeds=[embed])
     except docker.errors.APIError as e:
         embed = discord.Embed(title="Error", color=discord.Color.red(), description=e)
+        await ctx.send(embeds=[embed])
+    except:
+        embed = discord.Embed(title="Error", color=discord.Color.red(), description="An error has occured")
         await ctx.send(embeds=[embed])
                   
 @client.command()
